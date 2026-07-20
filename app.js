@@ -135,24 +135,61 @@
     });
   }
 
+  // Fade photos in once loaded (or immediately if already cached), so the
+  // inline LQIP blur behind them is only visible for a moment on cold load.
+  function hydratePhotos(root) {
+    root.querySelectorAll("img.card-photo, img.hero-photo").forEach((img) => {
+      if (img.complete && img.naturalWidth > 0) {
+        img.classList.add("loaded");
+      } else {
+        const done = () => img.classList.add("loaded");
+        img.addEventListener("load", done, { once: true });
+        img.addEventListener("error", done, { once: true });
+      }
+    });
+  }
+
+  // Photographic hero banner used at the top of category and detail views.
+  function heroHtml(category, title, eyebrow) {
+    const blur = (typeof MEAT_PHOTO_BLUR !== "undefined" && MEAT_PHOTO_BLUR[category.id]) || "";
+    return `
+      <div class="hero" style="background-image:url('${blur}');">
+        <img class="hero-photo" src="${category.photo}" alt="" decoding="async">
+        <div class="hero-overlay"></div>
+        <div class="hero-text">
+          <span class="hero-eyebrow">${renderIcon(category.icon)}${escapeHtml(eyebrow)}</span>
+          <h2 class="hero-title">${escapeHtml(title)}</h2>
+        </div>
+      </div>
+    `;
+  }
+
   // ---------------- Views ----------------
   function renderHome() {
     applyTheme(null);
     setHeader({ title: "Meat Temp", icon: null, showBack: false });
 
-    const cards = MEAT_DATA.categories.map((cat) => `
+    const cards = MEAT_DATA.categories.map((cat) => {
+      const blur = (typeof MEAT_PHOTO_BLUR !== "undefined" && MEAT_PHOTO_BLUR[cat.id]) || "";
+      return `
       <div class="category-card" data-cat-id="${cat.id}" role="button" tabindex="0"
-           style="--card-accent:${cat.theme.accent}; --card-bg1:${cat.theme.bg1}; --card-bg2:${cat.theme.bg2};">
-        <span class="card-icon">${renderIcon(cat.icon)}</span>
-        <span class="card-name">${escapeHtml(cat.name)}</span>
-        <span class="card-tagline">${escapeHtml(cat.tagline)}</span>
-      </div>
-    `).join("");
+           style="--card-accent:${cat.theme.accent}; background-image:url('${blur}');">
+        <img class="card-photo" src="${cat.photo}" alt="" loading="lazy" decoding="async">
+        <div class="card-overlay"></div>
+        <span class="card-badge">${renderIcon(cat.icon)}</span>
+        <div class="card-text">
+          <span class="card-name">${escapeHtml(cat.name)}</span>
+          <span class="card-tagline">${escapeHtml(cat.tagline)}</span>
+        </div>
+      </div>`;
+    }).join("");
 
     $view.innerHTML = `
       <div class="section-title">Pick a category</div>
       <div class="category-grid">${cards}</div>
     `;
+
+    hydratePhotos($view);
 
     $view.querySelectorAll(".category-card").forEach((card) => {
       const go = () => { location.hash = `#/category/${card.dataset.catId}`; };
@@ -172,10 +209,11 @@
 
     const rows = category.cuts.map((cut) => cutRowHtml(cut, category, false)).join("");
     $view.innerHTML = `
-      <div class="page-tagline">${escapeHtml(category.tagline)}</div>
+      ${heroHtml(category, category.name, category.tagline)}
       <div class="cut-list">${rows}</div>
     `;
     bindCutRows($view);
+    hydratePhotos($view);
   }
 
   function methodSectionHtml(methodKey, methodData) {
@@ -202,12 +240,7 @@
     applyTheme(category.theme);
     setHeader({ title: cut.name, icon: category.icon, showBack: true });
 
-    let html = `
-      <div class="detail-header">
-        <div class="detail-category-label">${escapeHtml(category.name)}</div>
-        <div class="detail-title">${escapeHtml(cut.name)}</div>
-      </div>
-    `;
+    let html = heroHtml(category, cut.name, category.name);
 
     if (cut.safeMinTemp != null) {
       html += `
@@ -267,6 +300,7 @@
     }
 
     $view.innerHTML = html;
+    hydratePhotos($view);
   }
 
   function renderSearchResults(query) {

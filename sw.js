@@ -6,7 +6,7 @@
  * the new version.
  */
 
-const CACHE_NAME = "meat-temp-v1";
+const CACHE_NAME = "meat-temp-v2";
 
 const PRECACHE_ASSETS = [
   "./",
@@ -17,7 +17,14 @@ const PRECACHE_ASSETS = [
   "./icons.js",
   "./manifest.json",
   "./icons/icon-192.png",
-  "./icons/icon-512.png"
+  "./icons/icon-512.png",
+  "./photos/beef.jpg",
+  "./photos/pork.jpg",
+  "./photos/poultry.jpg",
+  "./photos/lamb.jpg",
+  "./photos/ground.jpg",
+  "./photos/seafood.jpg",
+  "./photos/game.jpg"
 ];
 
 self.addEventListener("install", (event) => {
