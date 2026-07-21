@@ -6,7 +6,7 @@
  * the new version.
  */
 
-const CACHE_NAME = "meat-temp-v3";
+const CACHE_NAME = "meat-temp-v4";
 
 const PRECACHE_ASSETS = [
   "./",

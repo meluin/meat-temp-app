@@ -21,12 +21,12 @@
       label: "Grill",
       glyph: '<svg viewBox="0 0 24 24" class="method-glyph"><ellipse cx="12" cy="18" rx="9" ry="2.4" fill="none" stroke="currentColor" stroke-width="2"/><line x1="7" y1="16" x2="7" y2="10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="17" y1="16" x2="17" y2="10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M9 10 Q12 3 15 10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>'
     },
-    other: {
-      label: "Stovetop / Other",
+    stovetop: {
+      label: "Stovetop / Pan",
       glyph: '<svg viewBox="0 0 24 24" class="method-glyph"><ellipse cx="12" cy="11" rx="8" ry="4" fill="none" stroke="currentColor" stroke-width="2"/><line x1="4" y1="11" x2="4" y2="14" stroke="currentColor" stroke-width="2"/><line x1="20" y1="11" x2="20" y2="14" stroke="currentColor" stroke-width="2"/><path d="M4 14 Q12 19 20 14" fill="none" stroke="currentColor" stroke-width="2"/><line x1="2" y1="7.5" x2="6" y2="7.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>'
     }
   };
-  const METHOD_ORDER = ["oven", "smoker", "grill", "other"];
+  const METHOD_ORDER = ["oven", "smoker", "grill", "stovetop"];
 
   const DEFAULT_THEME = {
     accent: "#8a2635",
@@ -53,6 +53,9 @@
   // ---------------- State ----------------
   let currentFilter = localStorage.getItem("meatTempMethodFilter") || "all";
   let inSearchMode = false;
+  // Which cooking method the detail view is currently showing, and for which
+  // cut — so the choice survives a re-render but resets when you open another.
+  let detailMethod = { cutId: null, method: null };
 
   // ---------------- Data helpers ----------------
   function getCategory(id) {
@@ -75,6 +78,12 @@
       }
     }
     return out;
+  }
+
+  /* True when a cut should be listed under the active method filter. */
+  function cutMatchesFilter(cut) {
+    if (currentFilter === "all") return true;
+    return !!(cut.methods && cut.methods[currentFilter]);
   }
 
   function escapeHtml(str) {
@@ -169,7 +178,10 @@
     applyTheme(null);
     setHeader({ title: "Meat Temp", icon: null, showBack: false });
 
-    const cards = MEAT_DATA.categories.map((cat) => {
+    // Only show categories that actually have a cut matching the active filter.
+    const categories = MEAT_DATA.categories.filter((cat) => cat.cuts.some(cutMatchesFilter));
+
+    const cards = categories.map((cat) => {
       const blur = (typeof MEAT_PHOTO_BLUR !== "undefined" && MEAT_PHOTO_BLUR[cat.id]) || "";
       return `
       <div class="category-card" data-cat-id="${cat.id}" role="button" tabindex="0"
@@ -184,9 +196,15 @@
       </div>`;
     }).join("");
 
+    const heading = currentFilter === "all"
+      ? "Pick a category"
+      : `Categories with ${METHOD_META[currentFilter].label} guidance`;
+
     $view.innerHTML = `
-      <div class="section-title">Pick a category</div>
-      <div class="category-grid">${cards}</div>
+      <div class="section-title">${escapeHtml(heading)}</div>
+      ${categories.length
+        ? `<div class="category-grid">${cards}</div>`
+        : `<div class="empty-state">No cuts have ${escapeHtml(METHOD_META[currentFilter].label)} guidance yet. Tap "All" below to see everything.</div>`}
     `;
 
     hydratePhotos($view);
@@ -207,25 +225,30 @@
     applyTheme(category.theme);
     setHeader({ title: category.name, icon: category.icon, showBack: true });
 
-    const rows = category.cuts.map((cut) => cutRowHtml(cut, category, false)).join("");
+    const cuts = category.cuts.filter(cutMatchesFilter);
+    const rows = cuts.map((cut) => cutRowHtml(cut, category, false)).join("");
     $view.innerHTML = `
       ${heroHtml(category, category.name, category.tagline)}
-      <div class="cut-list">${rows}</div>
+      ${cuts.length
+        ? `<div class="cut-list">${rows}</div>`
+        : `<div class="empty-state">No ${escapeHtml(METHOD_META[currentFilter].label)} guidance for any ${escapeHtml(category.name)} cut. Tap "All" below to see everything.</div>`}
     `;
     bindCutRows($view);
     hydratePhotos($view);
   }
 
-  function methodSectionHtml(methodKey, methodData) {
+  /* `showHeading` is false when the method picker above already names the
+     method — repeating it verbatim inside the card just reads as a stutter. */
+  function methodSectionHtml(methodKey, methodData, showHeading) {
     const meta = METHOD_META[methodKey];
-    const heading = methodKey === "other" && methodData.label ? methodData.label : meta.label;
+    const heading = methodData.label || meta.label;
     const rows = [];
     if (methodData.temp) rows.push(`<dt>Temp</dt><dd>${escapeHtml(methodData.temp)}</dd>`);
     if (methodData.time) rows.push(`<dt>Time</dt><dd>${escapeHtml(methodData.time)}</dd>`);
     if (methodData.pull) rows.push(`<dt>Pull at</dt><dd>${escapeHtml(methodData.pull)}</dd>`);
     return `
       <div class="card">
-        <div class="card-heading">${meta.glyph}<span>${escapeHtml(heading)}</span></div>
+        ${showHeading ? `<div class="card-heading">${meta.glyph}<span>${escapeHtml(heading)}</span></div>` : ""}
         <dl class="method-grid">${rows.join("")}</dl>
         ${methodData.notes ? `<div class="method-notes">${escapeHtml(methodData.notes)}</div>` : ""}
       </div>
@@ -277,13 +300,36 @@
     }
 
     const availableMethods = cut.methods ? METHOD_ORDER.filter((m) => cut.methods[m]) : [];
-    const methodsToShow = currentFilter === "all" ? availableMethods : availableMethods.filter((m) => m === currentFilter);
 
-    if (currentFilter !== "all" && methodsToShow.length === 0) {
-      const label = METHOD_META[currentFilter].label;
-      html += `<div class="no-method-note">No ${escapeHtml(label)} guidance for this cut — try "All" in the filter below.</div>`;
+    if (availableMethods.length === 0) {
+      html += `<div class="no-method-note">No cooking-method guidance recorded for this cut.</div>`;
     } else {
-      methodsToShow.forEach((m) => { html += methodSectionHtml(m, cut.methods[m]); });
+      // Keep the reader's own pick while they stay on this cut; otherwise
+      // default to whatever the bottom filter is set to, if this cut has it.
+      const keepChoice = detailMethod.cutId === cut.id && availableMethods.includes(detailMethod.method);
+      const selected = keepChoice
+        ? detailMethod.method
+        : (availableMethods.includes(currentFilter) ? currentFilter : availableMethods[0]);
+      detailMethod = { cutId: cut.id, method: selected };
+
+      // A single-option <select> would be a dead control, so only show the
+      // picker when there's actually a choice to make.
+      if (availableMethods.length > 1) {
+        const options = availableMethods.map((m) => {
+          const label = cut.methods[m].label || METHOD_META[m].label;
+          return `<option value="${m}"${m === selected ? " selected" : ""}>${escapeHtml(label)}</option>`;
+        }).join("");
+        html += `
+          <div class="method-picker">
+            <label class="method-picker-label" for="methodSelect">Cooking method</label>
+            <div class="select-wrap">
+              <select id="methodSelect" class="method-select" aria-label="Cooking method">${options}</select>
+              <svg viewBox="0 0 24 24" class="select-chevron" aria-hidden="true"><path d="M6 9 L12 15 L18 9" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+          </div>
+        `;
+      }
+      html += `<div id="methodSection"></div>`;
     }
 
     if (cut.rest) {
@@ -301,6 +347,19 @@
 
     $view.innerHTML = html;
     hydratePhotos($view);
+
+    // Swap only the guidance block when the method changes, so the hero and
+    // the temperature cards above it don't flicker or lose scroll position.
+    const $section = document.getElementById("methodSection");
+    if ($section) {
+      const paint = (method) => {
+        detailMethod = { cutId: cut.id, method: method };
+        $section.innerHTML = methodSectionHtml(method, cut.methods[method], availableMethods.length === 1);
+      };
+      paint(detailMethod.method);
+      const $select = document.getElementById("methodSelect");
+      if ($select) $select.addEventListener("change", () => paint($select.value));
+    }
   }
 
   function renderSearchResults(query) {
@@ -311,10 +370,14 @@
       html = `<div class="empty-state">Start typing to search every cut across all categories — e.g. "brisket", "chicken breast", "salmon".</div>`;
     } else {
       const matches = allCutsFlat().filter(({ cut, category }) =>
-        cut.name.toLowerCase().includes(q) || category.name.toLowerCase().includes(q)
+        cutMatchesFilter(cut) &&
+        (cut.name.toLowerCase().includes(q) || category.name.toLowerCase().includes(q))
       );
       if (matches.length === 0) {
-        html = `<div class="empty-state">No matches for "${escapeHtml(query)}". Try a shorter or different term.</div>`;
+        const suffix = currentFilter === "all"
+          ? ""
+          : ` with ${METHOD_META[currentFilter].label} guidance`;
+        html = `<div class="empty-state">No matches for "${escapeHtml(query)}"${escapeHtml(suffix)}. Try a shorter or different term.</div>`;
       } else {
         html = `<div class="cut-list">${matches.map(({ cut, category }) => cutRowHtml(cut, category, true)).join("")}</div>`;
       }
@@ -402,8 +465,16 @@
     currentFilter = btn.dataset.method;
     localStorage.setItem("meatTempMethodFilter", currentFilter);
     $methodFilter.querySelectorAll(".filter-chip").forEach((c) => c.classList.toggle("active", c === btn));
-    const itemMatch = location.hash.match(/^#\/item\/(.+)$/);
-    if (itemMatch && !inSearchMode) renderDetail(decodeURIComponent(itemMatch[1]));
+
+    // Changing the filter is an explicit request for that method, so let it
+    // override whatever the detail dropdown was last set to.
+    detailMethod = { cutId: null, method: null };
+
+    if (inSearchMode) {
+      renderSearchResults($searchInput.value);
+    } else {
+      route(location.hash);
+    }
   });
 
   $disclaimerStrip.addEventListener("click", () => { $infoModal.hidden = false; });

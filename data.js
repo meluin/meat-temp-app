@@ -16,11 +16,14 @@
  *   id, name, safeMinTemp (°C), safeMinNote,
  *   doneness: [{ label, temp (°C) }]   // optional
  *   methods: {
- *     oven:    { temp, time, pull, notes }
- *     smoker:  { temp, time, pull, notes }
- *     grill:   { temp, time, pull, notes }
- *     other:   { label, time, pull, notes }   // stovetop / braise / boil-steam
+ *     oven:     { temp, time, pull, notes }
+ *     smoker:   { temp, time, pull, notes }
+ *     grill:    { temp, time, pull, notes }
+ *     stovetop: { label, temp, time, pull, notes }  // pan sear / saute / boil-steam
  *   }
+ *
+ * `label` (optional, any method) overrides the generic method name in the UI —
+ * e.g. a stovetop entry labelled "Boil / Steam" or "Pan Sear (high heat)".
  *   rest: string,
  *   notes: string   // assumptions / enthusiast tips, optional
  * }
@@ -56,7 +59,8 @@ const MEAT_DATA = {
           ],
           methods: {
             grill: { temp: "232°C direct, high heat", time: "4-6 min per side (2.5-4cm cut)", pull: "~3°C below target (carryover)", notes: "Sear both sides, move to indirect heat to finish for thicker cuts." },
-            oven: { temp: "135°C (reverse sear), then 260°C sear", time: "~20-25 min low, 1-2 min/side sear", pull: "~3°C below target", notes: "Reverse sear works well for cuts over 4cm thick." }
+            oven: { temp: "135°C (reverse sear), then 260°C sear", time: "~20-25 min low, 1-2 min/side sear", pull: "~3°C below target", notes: "Reverse sear works well for cuts over 4cm thick." },
+            stovetop: { label: "Pan Sear (cast iron)", temp: "High heat, screaming-hot pan", time: "3-4 min per side (2.5cm cut)", pull: "~3°C below target (carryover)", notes: "Pat dry, oil the steak not the pan. Baste with butter, garlic and thyme for the last minute; finish thick cuts in a 200°C oven." }
           },
           rest: "5-10 minutes, loosely tented with foil.",
           notes: "Rare and Medium Rare are common preferences below the USDA-recommended minimum; eating undercooked beef whole-cuts is lower risk than ground beef but still a personal choice."
@@ -155,7 +159,8 @@ const MEAT_DATA = {
           ],
           methods: {
             grill: { temp: "204°C direct", time: "4-5 min per side (bone-in, 2.5cm)", pull: "63°C" },
-            oven: { temp: "204°C", time: "20-25 min", pull: "63°C" }
+            oven: { temp: "204°C", time: "20-25 min", pull: "63°C" },
+            stovetop: { label: "Pan Sear (cast iron)", temp: "Medium-high heat", time: "4-5 min per side (2.5cm chop)", pull: "63°C", notes: "Sear both sides, then drop to medium and butter-baste to finish. A hint of pink at 63°C is safe." }
           },
           rest: "3 minutes minimum (USDA requirement), 5 min recommended."
         },
@@ -248,7 +253,8 @@ const MEAT_DATA = {
           methods: {
             oven: { temp: "204°C", time: "20-25 min", pull: "74°C" },
             grill: { temp: "191-204°C", time: "6-8 min per side", pull: "74°C" },
-            smoker: { temp: "107-121°C", time: "45-75 min", pull: "74°C" }
+            smoker: { temp: "107-121°C", time: "45-75 min", pull: "74°C" },
+            stovetop: { label: "Pan Sear / Sauté", temp: "Medium heat", time: "6-8 min per side", pull: "74°C", notes: "Pound to an even thickness so it cooks through without drying. Cover the pan for the last few minutes to finish gently." }
           },
           rest: "5 minutes."
         },
@@ -329,7 +335,8 @@ const MEAT_DATA = {
           ],
           methods: {
             grill: { temp: "232°C direct", time: "3-4 min per side", pull: "~3°C below target" },
-            oven: { temp: "204°C (pan-sear then oven finish)", time: "6-8 min total", pull: "~3°C below target" }
+            oven: { temp: "204°C (pan-sear then oven finish)", time: "6-8 min total", pull: "~3°C below target" },
+            stovetop: { label: "Pan Sear (cast iron)", temp: "Medium-high to high heat", time: "3-4 min per side", pull: "~3°C below target", notes: "Render the fat edge first by holding the chops fat-side down for a minute, then sear the flats." }
           },
           rest: "3-5 minutes."
         },
@@ -397,7 +404,8 @@ const MEAT_DATA = {
           safeMinNote: "USDA safe minimum for ground beef — higher than whole-cut beef because grinding spreads surface bacteria through the meat.",
           methods: {
             grill: { temp: "204°C direct", time: "4-5 min per side (2cm patty)", pull: "71°C" },
-            oven: { temp: "177°C (meatloaf, ~0.7kg loaf)", time: "~1 hr", pull: "71°C" }
+            oven: { temp: "177°C (meatloaf, ~0.7kg loaf)", time: "~1 hr", pull: "71°C" },
+            stovetop: { label: "Pan Fry / Skillet", temp: "Medium-high heat", time: "3-4 min per side (2cm patty); 7-10 min for loose/crumbled mince", pull: "71°C", notes: "Ground beef must reach 71°C all the way through — colour is not a reliable guide, always check with a thermometer." }
           },
           rest: "3 minutes."
         },
@@ -408,7 +416,8 @@ const MEAT_DATA = {
           safeMinNote: "USDA safe minimum for ground pork.",
           methods: {
             grill: { temp: "204°C direct", time: "4-5 min per side (patty)", pull: "71°C" },
-            oven: { temp: "191°C", time: "20-25 min (meatballs/patties)", pull: "71°C" }
+            oven: { temp: "191°C", time: "20-25 min (meatballs/patties)", pull: "71°C" },
+            stovetop: { label: "Pan Fry / Skillet", temp: "Medium-high heat", time: "4-5 min per side (patty); 7-10 min crumbled", pull: "71°C" }
           },
           rest: "3 minutes."
         },
@@ -419,7 +428,8 @@ const MEAT_DATA = {
           safeMinNote: "USDA safe minimum for all ground poultry — same as whole poultry cuts, unlike red meat.",
           methods: {
             grill: { temp: "191-204°C direct", time: "5-6 min per side (patty)", pull: "74°C" },
-            oven: { temp: "191°C", time: "20-25 min", pull: "74°C" }
+            oven: { temp: "191°C", time: "20-25 min", pull: "74°C" },
+            stovetop: { label: "Pan Fry / Skillet", temp: "Medium heat", time: "5-6 min per side (patty); 8-10 min crumbled", pull: "74°C", notes: "Very lean — add a little oil to the pan and avoid pressing the patties, which squeezes out what moisture there is." }
           },
           rest: "3 minutes."
         },
@@ -430,7 +440,8 @@ const MEAT_DATA = {
           safeMinNote: "USDA safe minimum for ground lamb.",
           methods: {
             grill: { temp: "204°C direct", time: "3-4 min per side (kofta/skewers)", pull: "71°C" },
-            oven: { temp: "191°C", time: "18-22 min", pull: "71°C" }
+            oven: { temp: "191°C", time: "18-22 min", pull: "71°C" },
+            stovetop: { label: "Pan Fry / Skillet", temp: "Medium-high heat", time: "3-4 min per side (kofta/patties)", pull: "71°C" }
           },
           rest: "3 minutes."
         },
@@ -441,7 +452,8 @@ const MEAT_DATA = {
           safeMinNote: "USDA safe minimum for ground game meat. Often blended with beef fat or pork fat since venison is very lean.",
           methods: {
             grill: { temp: "204°C direct", time: "4-5 min per side (patty)", pull: "71°C" },
-            oven: { temp: "191°C", time: "~1 hr (meatloaf)", pull: "71°C" }
+            oven: { temp: "191°C", time: "~1 hr (meatloaf)", pull: "71°C" },
+            stovetop: { label: "Pan Fry / Skillet", temp: "Medium-high heat", time: "4-5 min per side (patty); 7-10 min crumbled", pull: "71°C", notes: "Venison is very lean — a fat blend (pork or beef) and a well-oiled pan keep patties from drying out." }
           },
           rest: "3 minutes."
         }
@@ -468,7 +480,8 @@ const MEAT_DATA = {
           safeMinNote: "USDA safe minimum for fish — or cook until flesh is opaque and flakes easily with a fork.",
           methods: {
             oven: { temp: "204°C", time: "~4-6 min per 1.25cm thickness (~10 min per 2.5cm)", pull: "63°C or opaque & flaking" },
-            grill: { temp: "204-232°C", time: "~8-10 min per 2.5cm of thickness, turning once", pull: "63°C or opaque & flaking" }
+            grill: { temp: "204-232°C", time: "~8-10 min per 2.5cm of thickness, turning once", pull: "63°C or opaque & flaking" },
+            stovetop: { label: "Pan Sear (skin-on)", temp: "Medium-high heat", time: "3-4 min skin-side down, 1-2 min after flipping", pull: "63°C or opaque & flaking", notes: "Press the fillet flat for the first 30 seconds so the skin stays in contact and crisps. Skin side gets most of the cook time." }
           },
           rest: "2-3 minutes.",
           notes: "Salmon and tuna are often served rarer (medium-rare, ~46-52°C) by choice for texture — a personal preference below USDA guidance, not a safety recommendation. Sushi-grade fish for raw preparations has separate freezing requirements not covered here."
@@ -480,7 +493,7 @@ const MEAT_DATA = {
           safeMinNote: "USDA guidance is visual, not a set temperature: cook until flesh is pearly/opaque and curled into a loose \"C\" shape. Informally, this is roughly 49-54°C internal.",
           methods: {
             grill: { temp: "High heat, direct", time: "2-3 min per side", pull: "Opaque & pink, curled into a C" },
-            other: { label: "Stovetop / Sauté", time: "2-3 min per side", pull: "Opaque & pink, curled into a C" }
+            stovetop: { label: "Stovetop / Sauté", time: "2-3 min per side", pull: "Opaque & pink, curled into a C" }
           },
           rest: "None needed.",
           notes: "Overcooked shrimp turns rubbery fast and curls into a tight \"O\" — pull as soon as it's opaque."
@@ -491,7 +504,7 @@ const MEAT_DATA = {
           safeMinTemp: null,
           safeMinNote: "USDA guidance is visual: cook until milky white/opaque and firm throughout.",
           methods: {
-            other: { label: "Pan Sear (high heat)", time: "1-2 min per side", pull: "Opaque, firm, golden crust" }
+            stovetop: { label: "Pan Sear (high heat)", time: "1-2 min per side", pull: "Opaque, firm, golden crust" }
           },
           rest: "None needed."
         },
@@ -501,7 +514,7 @@ const MEAT_DATA = {
           safeMinTemp: 60,
           safeMinNote: "Informal internal target for tail meat; USDA guidance is visual — flesh should be opaque white, shell bright red.",
           methods: {
-            other: { label: "Boil / Steam", time: "~8-10 min per lb (~18-22 min per kg)", pull: "Opaque white flesh, ~60°C" }
+            stovetop: { label: "Boil / Steam", time: "~8-10 min per lb (~18-22 min per kg)", pull: "Opaque white flesh, ~60°C" }
           },
           rest: "None needed."
         },
@@ -511,7 +524,7 @@ const MEAT_DATA = {
           safeMinTemp: 63,
           safeMinNote: "Informal internal target; USDA guidance is visual — shell turns bright red/orange and meat is opaque.",
           methods: {
-            other: { label: "Steam / Boil", time: "~8-15 min depending on size", pull: "Opaque meat, ~63°C" }
+            stovetop: { label: "Steam / Boil", time: "~8-15 min depending on size", pull: "Opaque meat, ~63°C" }
           },
           rest: "None needed."
         },
@@ -521,7 +534,7 @@ const MEAT_DATA = {
           safeMinTemp: 63,
           safeMinNote: "USDA guidance: cook until shells open. Discard any that stay closed after cooking — they were not viable/safe.",
           methods: {
-            other: { label: "Steam", time: "5-10 min, until shells open" }
+            stovetop: { label: "Steam", time: "5-10 min, until shells open" }
           },
           rest: "None needed."
         }
@@ -554,7 +567,7 @@ const MEAT_DATA = {
           ],
           methods: {
             grill: { temp: "232°C direct", time: "3-4 min per side", pull: "~3°C below target" },
-            other: { label: "Pan Sear (high heat)", time: "2-3 min per side", pull: "~3°C below target" }
+            stovetop: { label: "Pan Sear (high heat)", time: "2-3 min per side", pull: "~3°C below target" }
           },
           rest: "5 minutes.",
           notes: "Venison is very lean and turns tough/dry well done — medium-rare is the enthusiast-community sweet spot, above the USDA minimum but below common well-done targets."

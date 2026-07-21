@@ -501,6 +501,62 @@ a { color: var(--accent-light); }
   color: var(--accent-light);
 }
 
+/* ---------------- Detail: cooking-method picker ---------------- */
+
+.method-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.method-picker-label {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-faint);
+  padding-left: 2px;
+}
+
+.select-wrap { position: relative; }
+
+.method-select {
+  width: 100%;
+  min-height: 52px;
+  padding: 0 46px 0 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid color-mix(in srgb, var(--accent) 60%, transparent);
+  background: color-mix(in srgb, var(--accent) 24%, var(--bg2));
+  color: var(--text);
+  font-size: 16px;
+  font-weight: 600;
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+}
+.method-select:focus {
+  outline: none;
+  border-color: var(--accent-light);
+}
+/* Native dropdown list needs explicit colors or it inherits the page's dark
+   text on a dark popup on some Android builds. */
+.method-select option {
+  background: var(--bg1);
+  color: var(--text);
+}
+
+.select-chevron {
+  position: absolute;
+  right: 15px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 20px;
+  height: 20px;
+  color: var(--accent-light);
+  pointer-events: none;
+}
+
 .doneness-table {
   display: flex;
   flex-direction: column;
